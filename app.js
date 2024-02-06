@@ -11,39 +11,58 @@ let backTracks = 0;
 
 function Clicked(board) {
      DisplaySudoku(board);
-     let BT = Solve(board);
-     console.log(BT);
+     let bkTracks = 0;
+     let {solved, bt} = Solve(board, bkTracks);
+     console.log(solved);
+     console.log(bt);
  };
 
 
 //https://lisperator.net/blog/javascript-sudoku-solver/ <-- solver* completely based on this lovely example
 
-function Solve(board){
-    let backTracks = 0;
-
+function Solve(board, bTracks){
+    let backTracks = bTracks;
     let {index, choices} = FindBest(board);
+    let solved = false;
+    //console.log(backTracks);
+   
     if (index == null){
-        return backTracks; // no more to fill
+        solved = true;
+        //console.log(backTracks);
+        return {solved, backTracks}; // no more to fill
     }
+    //
+    // if (index == 1){
+    //     solved = true;
+    //     return {solved, backTracks}; // no more to fill
+    // }
+    //
     if (index == 0){
         choices = choices.sort(() => Math.random() - 0.5);
     }
     for (let c of choices){
         board[index] = c;
         // if we find a path that successfully finds a solution from the choice
-        let solveTry = Solve(board);
-        backTracks = backTracks + solveTry;
-        if (solveTry == 0) {
+        let returned = Solve(board, backTracks);
+        
+        backTracks += returned.backTracks;
+        console.log(backTracks);
+       // console.log(returned.backTracks);
+                
+        if (returned.solved) {
             //update visual board
             DisplaySudoku(board);
-            //turn true and finish
-            return backTracks;
+            //return true and finish
+            solved = true;
+            console.log(backTracks);
+            return {solved, backTracks}; 
         }
     }
     // if choice does not produce an outcome
     board[index] =  "";
     backTracks++;
-    return backTracks;
+    solved = false;
+    return {solved, backTracks}; 
     // reset board value and tell parent solve function we were unsuccessfully
 }
 
@@ -54,23 +73,23 @@ function createBoard(){
     {
         board.push("");
         //  TEST PUZZLE
-        // if (square == 3) {board[square] = 8};
-        // if (square == 5) {board[square] = 1};
-        // if (square == 16) {board[square] = 4};
-        // if (square == 17) {board[square] = 3};
-        // if (square == 18) {board[square] = 5};
-        // if (square == 31) {board[square] = 7};
-        // if (square == 33) {board[square] = 8};
-        // if (square == 42) {board[square] = 1};
-        // if (square == 46) {board[square] = 2};
-        // if (square == 49) {board[square] = 3};
-        // if (square == 54) {board[square] = 6};
-        // if (square == 61) {board[square] = 7};
-        // if (square == 62) {board[square] = 5};
-        // if (square == 65) {board[square] = 3};
-        // if (square == 66) {board[square] = 4};
-        // if (square == 75) {board[square] = 2};
-        // if (square == 78) {board[square] = 6};
+        if (square == 3) {board[square] = 8};
+        if (square == 5) {board[square] = 1};
+        if (square == 16) {board[square] = 4};
+        if (square == 17) {board[square] = 3};
+        if (square == 18) {board[square] = 5};
+        if (square == 31) {board[square] = 7};
+        if (square == 33) {board[square] = 8};
+        if (square == 42) {board[square] = 1};
+        if (square == 46) {board[square] = 2};
+        if (square == 49) {board[square] = 3};
+        if (square == 54) {board[square] = 6};
+        if (square == 61) {board[square] = 7};
+        if (square == 62) {board[square] = 5};
+        if (square == 65) {board[square] = 3};
+        if (square == 66) {board[square] = 4};
+        if (square == 75) {board[square] = 2};
+        if (square == 78) {board[square] = 6};
     }
     return board;
 }
