@@ -1,68 +1,62 @@
 
+let boxes = document.querySelectorAll('.grid div');
 let board = createBoard();
 DisplaySudoku(board);
+let backTracks = 0;
 let btn = document.getElementById("solve");
 let rst = document.getElementById("rst");
-let backTracks = 0;
 
     btn.onclick = function() {Clicked(board);}
     rst.onclick = function() {location.reload();}
 
 
 function Clicked(board) {
-     DisplaySudoku(board);
-     let bkTracks = 0;
-     let {solved, bt} = Solve(board, bkTracks);
-     console.log(solved);
-     console.log(bt);
+
+     Solve(board);
+     //DisplaySudoku(board);
  };
 
 
 //https://lisperator.net/blog/javascript-sudoku-solver/ <-- solver* completely based on this lovely example
 
-function Solve(board, bTracks){
-    let backTracks = bTracks;
+function Solve(board){
+    //console.log("what the fuck");
+    
     let {index, choices} = FindBest(board);
-    let solved = false;
-    //console.log(backTracks);
-   
+    
+    // DisplaySudoku(board);
+
     if (index == null){
-        solved = true;
-        //console.log(backTracks);
-        return {solved, backTracks}; // no more to fill
+        console.log(backTracks);
+        return true; // no more to fill
+        
     }
     //
     // if (index == 1){
-    //     solved = true;
-    //     return {solved, backTracks}; // no more to fill
+    //     return true; // test one iteration
     // }
     //
     if (index == 0){
         choices = choices.sort(() => Math.random() - 0.5);
     }
+
     for (let c of choices){
         board[index] = c;
-        // if we find a path that successfully finds a solution from the choice
-        let returned = Solve(board, backTracks);
-        
-        backTracks += returned.backTracks;
-        console.log(backTracks);
-       // console.log(returned.backTracks);
-                
-        if (returned.solved) {
+
+        // if we find a path that successfully finds a solution from the choice            
+        if (Solve(board)) {
             //update visual board
             DisplaySudoku(board);
-            //return true and finish
-            solved = true;
-            console.log(backTracks);
-            return {solved, backTracks}; 
+            
+            //return true and finish path
+            return true;
         }
     }
     // if choice does not produce an outcome
     board[index] =  "";
-    backTracks++;
-    solved = false;
-    return {solved, backTracks}; 
+    ++backTracks;
+    
+    return false;
     // reset board value and tell parent solve function we were unsuccessfully
 }
 
@@ -195,12 +189,20 @@ function FindBest(board) {
 
 
 function DisplaySudoku(board){
-    let boxes = document.querySelectorAll('.grid div');
+    //setTimeout(LogUpdate, 100);
     //update board array onto div array
     for (let index = 0; index < 81; index++)
     {
-        boxes[index].innerHTML = board[index];
+        UpdateBoard(board, index);
     }
+}
+
+function UpdateBoard(board, index) {
+    boxes[index].innerHTML = board[index];
+}
+
+function LogUpdate(){
+    console.log("updated.");
 }
 
 
