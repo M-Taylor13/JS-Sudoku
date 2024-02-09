@@ -1,60 +1,112 @@
 
 let boxes = document.querySelectorAll('.grid div');
 let board = createBoard();
+let isGenerating = true;
+let possibilities = 0;
+let solving = false;
+
 DisplaySudoku(board);
 let backTracks = 0;
-let btn = document.getElementById("solve");
+let gen = document.getElementById("gen");
+let slv = document.getElementById("solve");
 let rst = document.getElementById("rst");
 
-    btn.onclick = function() {Clicked(board);}
+    gen.onclick = function() {genClick(board);}
+    slv.onclick = function() {solveClick(board);}
     rst.onclick = function() {location.reload();}
 
 
-function Clicked(board) {
+function genClick(board) {
+    isGenerating = true;
+    Solve(board);
+    RemoveSquares(board);
+    DisplaySudoku(board);
+};
 
-     Solve(board);
-     //DisplaySudoku(board);
+function solveClick(board) {
+   
+   let found = solveUnique(board);
+   DisplaySudoku(board);
+   if(found == false){console.log("failed")}
+
  };
+
+ function solveUnique (board) {
+    isGenerating = false;
+    let found = false;
+    //let cycles = 0;
+    possibilities = 0;
+    Solve(board);
+    console.log(board);
+    if(possibilities > 1 || possibilities === 0) found = false;
+    
+    else found = true;
+    console.log(found);
+    return found;
+ }
 
 
 //https://lisperator.net/blog/javascript-sudoku-solver/ <-- solver* completely based on this lovely example
 
 function Solve(board){
-    //console.log("what the fuck");
     
     let {index, choices} = FindBest(board);
-    
-    // DisplaySudoku(board);
-
-    if (index == null){
-        console.log(backTracks);
-        return true; // no more to fill
-        
-    }
-    //
-    // if (index == 1){
-    //     return true; // test one iteration
-    // }
-    //
-    if (index == 0){
-        choices = choices.sort(() => Math.random() - 0.5);
-    }
-
-    for (let c of choices){
-        board[index] = c;
-
-        // if we find a path that successfully finds a solution from the choice            
-        if (Solve(board)) {
-            //update visual board
-            DisplaySudoku(board);
-            
-            //return true and finish path
-            return true;
+    // let emptySquares = board.filter((square) => square.value == "");
+    let emptySquares = [];
+    for (let s = 0; s < board.length; ++s){
+        if (board[s] == ""){
+            emptySquares.push(board[s]);
         }
     }
+    
+    
+    DisplaySudoku(board);
+
+    if(emptySquares.length == 0){
+        possibilities++;
+        return false;
+    }
+
+    if (possibilities > 1){
+        //no unique solutions
+        console.log("no unique");
+        return true;
+    }
+    
+
+    if (index == 0 && isGenerating == true){
+        choices = choices.sort(() => Math.random() - 0.5);
+        console.log("error: accessing generation");
+    }
+
+
+    for (let c of choices){
+        board[index].value = c;
+        // if we find a path that successfully finds a solution from the choice            
+        if (Solve(board) && possibilities <= 1) {
+            console.log(board);
+            //update visual board
+            DisplaySudoku(board);
+
+            console.log("solved");
+
+            //return true and finish path
+            return true;
+        
+        }
+    }
+    
+    if (possibilities > 0 && isGenerating == true){
+        isGenerating = false;
+        console.log("gen");
+        //return true and finish path
+        return true;
+    }
+
     // if choice does not produce an outcome
     board[index] =  "";
     ++backTracks;
+    console.log(possibilities);
     
     return false;
     // reset board value and tell parent solve function we were unsuccessfully
@@ -201,10 +253,42 @@ function UpdateBoard(board, index) {
     boxes[index].innerHTML = board[index];
 }
 
-function LogUpdate(){
-    console.log("updated.");
+function RemoveSquares(board){
+    let toRemove = findToRemove();
+
+    for (let removed = 0; removed < toRemove.length; ++removed){
+        board[toRemove[removed]] = ""; 
+        //remove generated index pairs to keep symmetry
+        board[80 - toRemove[removed]] = "";
+        //manually remove centre square
+        board[40] = "";
+    }
+
 }
 
+function findToRemove() {
+    let fromEnd;
+    let toRemove = [];
+    for (let rmAmt = 0; rmAmt < 22; ++rmAmt){
+        let valid = true;
+        fromEnd = getRandomInt(40);
+        for (let prevRm = 0; prevRm < toRemove.length; ++prevRm){
+            if (fromEnd == toRemove[prevRm]){
+                rmAmt--;
+                valid = false;
+            }
+        }
+        if (valid == true){
+            toRemove.push(fromEnd);
+        }
+    }
+    return toRemove;
+
+}
+
+// function betweenRange(x, value) {
+//     return x >= value - 1 && x <= value + 1;
+//   }
 
 // random function with max value
 function getRandomInt(max) {
