@@ -4,6 +4,8 @@ let board = createBoard();
 let isGenerating = true;
 let possibilities = 0;
 let solving = false;
+let okBoard = board;
+let uniqueSol;
 
 DisplaySudoku(board);
 let backTracks = 0;
@@ -17,99 +19,141 @@ let rst = document.getElementById("rst");
 
 
 function genClick(board) {
-    isGenerating = true;
-    Solve(board);
-    RemoveSquares(board);
-    DisplaySudoku(board);
+    // need method to shuffle/ flip rows and columns
+    // isGenerating = true;
+    // Solve(board);
+    // RemoveSquares(board);
+    // DisplaySudoku(board);
+    alert("in works");
 };
 
 function solveClick(board) {
-   
-   let found = solveUnique(board);
-   DisplaySudoku(board);
-   if(found == false){console.log("failed")}
-
+    console.log("Solving...");
+   solveUnique(board);
+   if(uniqueSol == false){
+    console.log("More than one solution");}
+    else console.log("Solution is unique!");
+    console.log("Done");
  };
 
- function solveUnique (board) {
+ function solveUnique(board) {
     isGenerating = false;
-    let found = false;
-    //let cycles = 0;
     possibilities = 0;
     Solve(board);
-    console.log(board);
-    if(possibilities > 1 || possibilities === 0) found = false;
-    
-    else found = true;
-    console.log(found);
-    return found;
+    return uniqueSol;
  }
 
 
 //https://lisperator.net/blog/javascript-sudoku-solver/ <-- solver* completely based on this lovely example
 
-function Solve(board){
+// function Generate(board){
     
-    let {index, choices} = FindBest(board);
-    // let emptySquares = board.filter((square) => square.value == "");
+//     let {index, choices} = FindBest(board);
+//     // let emptySquares = board.filter((square) => square.value == "");
+//     let emptySquares = [];
+//     for (let s = 0; s < board.length; ++s){
+//         if (board[s] == ""){
+//             emptySquares.push(board[s]);
+//         }
+//     }
+    
+    
+//     DisplaySudoku(board);
+
+//     if(emptySquares.length === 0){
+//         possibilities++;
+//         return false;
+//     }
+
+//     if (possibilities > 1){
+//         //no unique solutions
+//         console.log("no unique");
+//         return true;
+//     }
+    
+
+//     if (index == 0 && isGenerating == true){
+//         choices = choices.sort(() => Math.random() - 0.5);
+//         console.log("error: accessing generation");
+//     }
+
+
+//     for (let c of choices){
+//         board[index].value = c;
+//         // if we find a path that successfully finds a solution from the choice            
+//         if (Generate(board) && possibilities <= 1) {
+//             console.log(board);
+//             //update visual board
+//             DisplaySudoku(board);
+
+//             console.log("solved");
+
+//             //return true and finish path
+//             return true;
+        
+//         }
+//     }
+    
+//     if (possibilities > 0 && isGenerating == true){
+//         isGenerating = false;
+//         console.log("gen");
+//         //return true and finish path
+//         return true;
+//     }
+
+//     // if choice does not produce an outcome
+//     board[index] =  "";
+//     ++backTracks;
+    
+//     return false;
+//     // reset board value and tell parent solve function we were unsuccessfully
+// }
+
+
+function Solve(board){
+
     let emptySquares = [];
     for (let s = 0; s < board.length; ++s){
         if (board[s] == ""){
-            emptySquares.push(board[s]);
+            emptySquares.push(s);
         }
     }
-    
-    
-    DisplaySudoku(board);
 
-    if(emptySquares.length == 0){
+    if (emptySquares.length === 0 && possibilities == 0){
+        DisplaySudoku(board);
+        uniqueSol = true;
         possibilities++;
         return false;
     }
 
-    if (possibilities > 1){
-        //no unique solutions
-        console.log("no unique");
-        return true;
-    }
-    
+    let {index, choices} = FindBest(board, emptySquares);
 
-    if (index == 0 && isGenerating == true){
-        choices = choices.sort(() => Math.random() - 0.5);
-        console.log("error: accessing generation");
-    }
-
-
-    for (let c of choices){
-        board[index].value = c;
-        // if we find a path that successfully finds a solution from the choice            
-        if (Solve(board) && possibilities <= 1) {
-            console.log(board);
-            //update visual board
-            DisplaySudoku(board);
-
-            console.log("solved");
-
-            //return true and finish path
-            return true;
-        
+    if (!Array.isArray(choices)){
+        if (possibilities > 1){
+            possibilities++;
         }
+        uniqueSol = false;
+        
+        console.log(possibilities);
+        return true;
     }
     
-    if (possibilities > 0 && isGenerating == true){
-        isGenerating = false;
-        console.log("gen");
-        //return true and finish path
-        return true;
+    for (let c of choices){
+        
+        board[index] = c;
+        // if we find a path that successfully finds a solution from the choice 
+           
+        if (Solve(board) && possibilities <= 1) {
+            //return true and finish paths
+            return true;
+        }
     }
 
     // if choice does not produce an outcome
     board[index] =  "";
     ++backTracks;
-    console.log(possibilities);
-    
+
     return false;
-    // reset board value and tell parent solve function we were unsuccessfully
 }
 
 
@@ -139,6 +183,15 @@ function createBoard(){
     }
     return board;
 }
+
+// function board2empty(index, emptySquares){
+//     for (let v = 0; v < emptySquares.length; ++v){
+//         if (index == emptySquares[v][0]){
+//             return v;
+//         }
+//     }
+//     return null;
+// }
 
 
 
@@ -205,35 +258,32 @@ function acceptable(board, choice, index) {
 }
 
 
-function FindBest(board) {
+function FindBest(board, emptySquares) {
     //finds options with smallest choices first -- more efficient method
     let index, choices;
     let leastMoves = 10; // start with random number above 9 (value changes with loop)
-    for (let i = 0; i < 81; ++i){
-        if (board[i] == "") // if cell is empty
-        {
+    for (let i = 0; i < emptySquares.length; ++i){
+        
+        let choiceArray = getChoices(board, emptySquares[i]);
 
-            let choiceArray = getChoices(board, i);
-
-            if(choiceArray.length < leastMoves){
-                // keep testing length of choice array until we get the smallest
-                leastMoves = choiceArray.length;
-                choices = choiceArray;
-                index = i;
-                // Each new record becomes the future return value
-                if (leastMoves == 0) {
-                    //breaks conditional if no choices
-                    break;
-                }
+        if(choiceArray.length < leastMoves){
+            // keep testing length of choice array until we get the smallest
+            leastMoves = choiceArray.length;
+            choices = choiceArray;
+            index = emptySquares[i];
+            // Each new record becomes the future return value
+            if (leastMoves == 0) {
+                //breaks conditional if no choices
+                break;
             }
         }
     }
 
     // randomly reversing choices array to add minor solution variety
-    let dir = getRandomInt(2);
-    if (dir == 1 && choices != undefined){
-        choices.sort((a, b) => b-a); 
-    }
+    // let dir = getRandomInt(2);
+    // if (dir == 1 && choices != undefined){
+    //     choices.sort((a, b) => b-a); 
+    // }
 
     // index with smallest choice count at the end remains return val
     return {index, choices};
