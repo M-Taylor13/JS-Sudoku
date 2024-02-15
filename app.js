@@ -1,17 +1,19 @@
 
-let boxes = document.querySelectorAll('.grid div');
-let board = createBoard();
-let isGenerating = true;
-let possibilities = 0;
-let solving = false;
-let solvableBoard = [];
-let uniqueSol;
+//https://lisperator.net/blog/javascript-sudoku-solver/ <-- base solver* heavily based on this lovely example
+
+
+let boxes = document.querySelectorAll('.grid div'); // each sudoku sqaure has a corresponding html div
+let board = createBoard(); // creates empty 81 square array
+let isGenerating; // as both generate and solve clicks use the same the function, we tweak it with this bool
+let possibilities = 0; // measures whether solution is unique or not
+let uniqueSol; // boolean for if solution was unique or not
+let solvedBoard; // a copy of the solved board, as board is modified to find further solutions
 
 DisplaySudoku(board);
 let backTracks = 0;
-let gen = document.getElementById("gen");
-let slv = document.getElementById("solve");
-let rst = document.getElementById("rst");
+let gen = document.getElementById("gen"); // generate button
+let slv = document.getElementById("solve"); // solve button
+let rst = document.getElementById("rst"); // reset button
 
     gen.onclick = function() {genClick(board);}
     slv.onclick = function() {solveClick(board);}
@@ -19,27 +21,27 @@ let rst = document.getElementById("rst");
 
 
 function genClick(board) {
-    // need method to shuffle/ flip rows and columns
-    let success = false;
-    Generate(board)
-    shuffle(board);
-    shuffle(board);
-    let boardBackup = RemoveSquares(board);
-    while (success == false) {
-        if (boardBackup.length != 0){
-            DisplaySudoku(board);
-            success = true;
-            console.log("success");
-        }
-    }
-
+    try {
+        // need method to shuffle/ flip rows and columns
+        isGenerating = true;
+        Generate(board)
+        shuffle(board);
+        shuffle(board); //shuffle (swap) rows/cols twice for variety
+        console.log('removing squares');
+        RemoveSquares(board); // recursively remove squares while checking solution is valid with solver
+        DisplaySudoku(board); 
+        console.log('done');
+      } catch (e) {
+        console.log("Timeout: caught " + e); // Sometimes generation causes a range error, page is reloaded if so
+        location.reload();
+      }
 
 };
 
 function solveClick(board) {
+    isGenerating = false;
     console.log("Solving...");
    solveUnique(board);
-   console.log(possibilities);
    if(uniqueSol == false){
     console.log("More than one solution");}
     else if (possibilities == 0) {
@@ -50,56 +52,17 @@ function solveClick(board) {
  };
 
  function solveUnique(board) {
-    isGenerating = false;
     possibilities = 0;
     Solve(board);
+    
+    //displays only the first solution if found
+    if (!isGenerating && Array.isArray(solvedBoard)){
+       DisplaySudoku(solvedBoard);
+    }
+
  }
 
-
-//https://lisperator.net/blog/javascript-sudoku-solver/ <-- solver* completely based on this lovely example
-
-function Generate(board){
-
-    let emptySquares = [];
-    for (let s = 0; s < board.length; ++s){
-        if (board[s] == ""){
-            emptySquares.push(s);
-        }
-    }
-    
-    let {index, choices} = FindBest(board, emptySquares);
-
-
-
-    if (emptySquares.length === 81){
-        choices = choices.sort(() => Math.random() - 0.5);
-    }
-
-    if (!Array.isArray(choices)){
-        return true;
-    }
-
-
-    for (let c of choices){
-        board[index] = c;
-        // if we find a path that successfully finds a solution from the choice            
-        if (Generate(board)) {
-            //return true and finish path
-            return true;
-        
-        }
-    }
-
-
-    // if choice does not produce an outcome
-    board[index] =  "";
-    
-    return false;
-    // reset board value and tell parent solve function we were unsuccessfully
-}
-
-
-function Solve(board){
+ function Solve(board){
 
     let emptySquares = [];
     for (let s = 0; s < board.length; ++s){
@@ -109,9 +72,7 @@ function Solve(board){
     }
 
     if (emptySquares.length === 0 && possibilities == 0){
-        DisplaySudoku(board);
-
-        solvableBoard = board;
+        solvedBoard = board.slice(0);
         uniqueSol = true;
         possibilities++;
         return false;
@@ -146,20 +107,63 @@ function Solve(board){
     return false;
 }
 
+
+function Generate(board){
+
+    let emptySquares = [];
+    for (let s = 0; s < board.length; ++s){
+        if (board[s] == ""){
+            emptySquares.push(s);
+        }
+    }
+    
+    let {index, choices} = FindBest(board, emptySquares);
+
+    if (emptySquares.length === 81){
+        // choices array order is randomized so we don't always generate the same puzzle
+        choices = choices.sort(() => Math.random() - 0.5);
+    }
+
+    if (!Array.isArray(choices)){
+        // avoiding using choices array if it is empty/undefined
+        return true;
+    }
+
+
+    for (let c of choices){
+        board[index] = c;
+        // if we find a path that successfully finds a solution from the choice            
+        if (Generate(board)) {
+            //return true and finish path
+            return true;
+        
+        }
+    }
+
+
+    // if choice does not produce an outcome
+    board[index] =  "";
+    
+    return false;
+    // reset board value and tell parent solve function we were unsuccessfully
+}
+
+
 function shuffle(board){
     let rows = [];
     let cols = [];
     let rnds;
 
+    // collect a single row
     for (let i = 0; i < 9; ++i){
         rows.push(lineCollect(board, i, 1));
     }
     
-    rnds = gen2RndLines(9);
+    rnds = gen2RndLines(9); // generates two numbers under 9 that arent duplicate and that are in the same 3 squares
 
     swapLine(board, rnds.rnd1, rnds.rnd2, rows, 1);
 
-
+    // collect a single column
     for (let i = 0; i < 9; ++i){
         cols.push(lineCollect(board, i, 9));
     }
@@ -187,6 +191,8 @@ function lineCollect(board, lineNo, increment){
 
     let lineValues = [];
     let startIndex = 0;
+
+    //adapts for column and row indexing differences
     if (increment === 9) {
         startIndex = lineNo;
     }
@@ -229,12 +235,7 @@ function swapLine(board, line1, line2, lineVals, increment) {
       board[startIndex1 + i] = oldLine[i * indexScale];
     }
 
-
-    DisplaySudoku(board);
-
     return lineVals;
-
-
 }
 
 
@@ -244,23 +245,23 @@ function createBoard(){
     {
         board.push("");
         //  TEST PUZZLE
-        if (square == 3) {board[square] = 8};
-        if (square == 5) {board[square] = 1};
-        if (square == 16) {board[square] = 4};
-        if (square == 17) {board[square] = 3};
-        if (square == 18) {board[square] = 5};
-        if (square == 31) {board[square] = 7};
-        if (square == 33) {board[square] = 8};
-        if (square == 42) {board[square] = 1};
-        if (square == 46) {board[square] = 2};
-        if (square == 49) {board[square] = 3};
-        if (square == 54) {board[square] = 6};
-        if (square == 61) {board[square] = 7};
-        if (square == 62) {board[square] = 5};
-        if (square == 65) {board[square] = 3};
-        if (square == 66) {board[square] = 4};
-        if (square == 75) {board[square] = 2};
-        if (square == 78) {board[square] = 6};
+        // if (square == 3) {board[square] = 8};
+        // if (square == 5) {board[square] = 1};
+        // if (square == 16) {board[square] = 4};
+        // if (square == 17) {board[square] = 3};
+        // if (square == 18) {board[square] = 5};
+        // if (square == 31) {board[square] = 7};
+        // if (square == 33) {board[square] = 8};
+        // if (square == 42) {board[square] = 1};
+        // if (square == 46) {board[square] = 2};
+        // if (square == 49) {board[square] = 3};
+        // if (square == 54) {board[square] = 6};
+        // if (square == 61) {board[square] = 7};
+        // if (square == 62) {board[square] = 5};
+        // if (square == 65) {board[square] = 3};
+        // if (square == 66) {board[square] = 4};
+        // if (square == 75) {board[square] = 2};
+        // if (square == 78) {board[square] = 6};
     }
     return board;
 }
@@ -350,20 +351,13 @@ function FindBest(board, emptySquares) {
         }
     }
 
-    // randomly reversing choices array to add minor solution variety
-    // let dir = getRandomInt(2);
-    // if (dir == 1 && choices != undefined){
-    //     choices.sort((a, b) => b-a); 
-    // }
-
     // index with smallest choice count at the end remains return val
     return {index, choices};
 }
 
 
 function DisplaySudoku(board){
-    //setTimeout(LogUpdate, 100);
-    //update board array onto div array
+    //update board array onto html div array
     for (let index = 0; index < 81; index++)
     {
         UpdateBoard(board, index);
@@ -375,48 +369,58 @@ function UpdateBoard(board, index) {
 }
 
 function RemoveSquares(board){
-    let toRemove = findToRemove();
-    let boardBackup = [];
 
-    for (let removed = 0; removed < toRemove.length; ++removed){
-        board[toRemove[removed]] = ""; 
-        //remove generated index pairs to keep symmetry
-        board[80 - toRemove[removed]] = "";
-        //manually remove centre square
-        board[40] = "";
-        solveUnique(board)
-        if (uniqueSol == true && removed > 28) {
-            boardBackup = board;
+
+    let emptySquares = [];
+    for (let s = 0; s < board.length; ++s){
+        if (board[s] == ""){
+            emptySquares.push(s);
         }
-
     }
-    return boardBackup;
+
+    let toRemove = findToRemove(emptySquares);
+    let removed1 = board[toRemove];
+    let removed2 = board[80 - toRemove];
+    board[40] = ""; 
+    board[toRemove] = ""; 
+    //remove generated index pairs while keeping symmetry
+    board[80 - toRemove] = "";
+    solveUnique(board);
+
+    if (emptySquares.length >= 51 && uniqueSol){
+        
+        return true;
+    }
+
+    if (RemoveSquares(board) && uniqueSol){
+        return true;
+        
+    }
+    
+    //return originals if path unsuccessful
+    board[toRemove] = removed1; 
+
+    board[80 - toRemove] = removed2;
+    return false;
 
 }
 
-function findToRemove() {
-    let fromEnd;
-    let toRemove = [];
-    for (let rmAmt = 0; rmAmt < 28; ++rmAmt){
-        let valid = true;
-        fromEnd = getRandomInt(40);
-        for (let prevRm = 0; prevRm < toRemove.length; ++prevRm){
-            if (fromEnd == toRemove[prevRm]){
-                rmAmt--;
-                valid = false;
+function findToRemove(emptySquares) {
+    let fromEnd = getRandomInt(40);
+
+    if (emptySquares.length > 0){
+        for (let i = 0 ; i < emptySquares.length; ++i){
+ 
+            if (emptySquares[i] == fromEnd) {
+                fromEnd = getRandomInt(40);
+                i = 0;
             }
         }
-        if (valid == true){
-            toRemove.push(fromEnd);
-        }
     }
-    return toRemove;
+    
+    return fromEnd;
 
 }
-
-// function betweenRange(x, value) {
-//     return x >= value - 1 && x <= value + 1;
-//   }
 
 // random function with max value
 function getRandomInt(max) {
