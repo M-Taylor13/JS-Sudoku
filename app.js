@@ -4,7 +4,7 @@ let board = createBoard();
 let isGenerating = true;
 let possibilities = 0;
 let solving = false;
-let okBoard = board;
+let solvableBoard = [];
 let uniqueSol;
 
 DisplaySudoku(board);
@@ -20,18 +20,31 @@ let rst = document.getElementById("rst");
 
 function genClick(board) {
     // need method to shuffle/ flip rows and columns
-    // isGenerating = true;
-    // Solve(board);
-    // RemoveSquares(board);
-    // DisplaySudoku(board);
-    alert("in works");
+    let success = false;
+    Generate(board)
+    shuffle(board);
+    shuffle(board);
+    let boardBackup = RemoveSquares(board);
+    while (success == false) {
+        if (boardBackup.length != 0){
+            DisplaySudoku(board);
+            success = true;
+            console.log("success");
+        }
+    }
+
+
 };
 
 function solveClick(board) {
     console.log("Solving...");
    solveUnique(board);
+   console.log(possibilities);
    if(uniqueSol == false){
     console.log("More than one solution");}
+    else if (possibilities == 0) {
+        console.log("No solutions")
+    }
     else console.log("Solution is unique!");
     console.log("Done");
  };
@@ -40,74 +53,50 @@ function solveClick(board) {
     isGenerating = false;
     possibilities = 0;
     Solve(board);
-    return uniqueSol;
  }
 
 
 //https://lisperator.net/blog/javascript-sudoku-solver/ <-- solver* completely based on this lovely example
 
-// function Generate(board){
+function Generate(board){
+
+    let emptySquares = [];
+    for (let s = 0; s < board.length; ++s){
+        if (board[s] == ""){
+            emptySquares.push(s);
+        }
+    }
     
-//     let {index, choices} = FindBest(board);
-//     // let emptySquares = board.filter((square) => square.value == "");
-//     let emptySquares = [];
-//     for (let s = 0; s < board.length; ++s){
-//         if (board[s] == ""){
-//             emptySquares.push(board[s]);
-//         }
-//     }
-    
-    
-//     DisplaySudoku(board);
-
-//     if(emptySquares.length === 0){
-//         possibilities++;
-//         return false;
-//     }
-
-//     if (possibilities > 1){
-//         //no unique solutions
-//         console.log("no unique");
-//         return true;
-//     }
-    
-
-//     if (index == 0 && isGenerating == true){
-//         choices = choices.sort(() => Math.random() - 0.5);
-//         console.log("error: accessing generation");
-//     }
+    let {index, choices} = FindBest(board, emptySquares);
 
 
-//     for (let c of choices){
-//         board[index].value = c;
-//         // if we find a path that successfully finds a solution from the choice            
-//         if (Generate(board) && possibilities <= 1) {
-//             console.log(board);
-//             //update visual board
-//             DisplaySudoku(board);
 
-//             console.log("solved");
+    if (emptySquares.length === 81){
+        choices = choices.sort(() => Math.random() - 0.5);
+    }
 
-//             //return true and finish path
-//             return true;
+    if (!Array.isArray(choices)){
+        return true;
+    }
+
+
+    for (let c of choices){
+        board[index] = c;
+        // if we find a path that successfully finds a solution from the choice            
+        if (Generate(board)) {
+            //return true and finish path
+            return true;
         
-//         }
-//     }
-    
-//     if (possibilities > 0 && isGenerating == true){
-//         isGenerating = false;
-//         console.log("gen");
-//         //return true and finish path
-//         return true;
-//     }
+        }
+    }
 
-//     // if choice does not produce an outcome
-//     board[index] =  "";
-//     ++backTracks;
+
+    // if choice does not produce an outcome
+    board[index] =  "";
     
-//     return false;
-//     // reset board value and tell parent solve function we were unsuccessfully
-// }
+    return false;
+    // reset board value and tell parent solve function we were unsuccessfully
+}
 
 
 function Solve(board){
@@ -121,6 +110,8 @@ function Solve(board){
 
     if (emptySquares.length === 0 && possibilities == 0){
         DisplaySudoku(board);
+
+        solvableBoard = board;
         uniqueSol = true;
         possibilities++;
         return false;
@@ -133,8 +124,6 @@ function Solve(board){
             possibilities++;
         }
         uniqueSol = false;
-        
-        console.log(possibilities);
         return true;
     }
     
@@ -144,6 +133,7 @@ function Solve(board){
         // if we find a path that successfully finds a solution from the choice 
            
         if (Solve(board) && possibilities <= 1) {
+
             //return true and finish paths
             return true;
         }
@@ -154,6 +144,97 @@ function Solve(board){
     ++backTracks;
 
     return false;
+}
+
+function shuffle(board){
+    let rows = [];
+    let cols = [];
+    let rnds;
+
+    for (let i = 0; i < 9; ++i){
+        rows.push(lineCollect(board, i, 1));
+    }
+    
+    rnds = gen2RndLines(9);
+
+    swapLine(board, rnds.rnd1, rnds.rnd2, rows, 1);
+
+
+    for (let i = 0; i < 9; ++i){
+        cols.push(lineCollect(board, i, 9));
+    }
+
+    rnds = gen2RndLines(9);
+
+    swapLine(board, rnds.rnd1, rnds.rnd2, cols, 9);
+
+
+}
+
+function gen2RndLines(max){
+    let rnd1 = getRandomInt(max);
+    let rnd2 = getRandomInt(max);
+    let box1 = Math.floor(rnd1 / 3) * 3;
+    let box2 = Math.floor(rnd2 / 3) * 3;
+    while (rnd1 === rnd2 || box1 != box2) {
+        rnd2 = getRandomInt(max);
+        box2 = Math.floor(rnd2 / 3) * 3;
+    }
+    return {rnd1, rnd2};
+}
+
+function lineCollect(board, lineNo, increment){
+
+    let lineValues = [];
+    let startIndex = 0;
+    if (increment === 9) {
+        startIndex = lineNo;
+    }
+    else{
+        startIndex = lineNo * 9;
+    }
+    
+    for (let i = 0; i < 9 * increment; i += increment) {
+        lineValues.push(board[startIndex + i]);
+    }
+
+    return lineValues;
+}
+
+function swapLine(board, line1, line2, lineVals, increment) {
+    //line1 is the line we take to overwrite line2
+    //a copy of line2 is stored in oldLine so it can overwrite the original line1 without being lost
+    let startIndex1;
+    let startIndex2;
+    let indexScale;
+    
+    
+    if (increment === 9) {
+        startIndex1 = line1;
+        startIndex2 = line2;
+        indexScale = 1/9;
+
+    }
+    else{
+        startIndex1 = line1 * 9;
+        startIndex2 = line2 * 9;
+        indexScale = 1;
+        
+    }
+    let oldLine = lineVals[line2];
+    
+    
+    for (let i = 0; i < 9 * increment; i += increment) {
+      board[startIndex2 + i] = lineVals[line1][i * indexScale];
+      board[startIndex1 + i] = oldLine[i * indexScale];
+    }
+
+
+    DisplaySudoku(board);
+
+    return lineVals;
+
+
 }
 
 
@@ -183,16 +264,6 @@ function createBoard(){
     }
     return board;
 }
-
-// function board2empty(index, emptySquares){
-//     for (let v = 0; v < emptySquares.length; ++v){
-//         if (index == emptySquares[v][0]){
-//             return v;
-//         }
-//     }
-//     return null;
-// }
-
 
 
 function ind2rc(index){
@@ -305,6 +376,7 @@ function UpdateBoard(board, index) {
 
 function RemoveSquares(board){
     let toRemove = findToRemove();
+    let boardBackup = [];
 
     for (let removed = 0; removed < toRemove.length; ++removed){
         board[toRemove[removed]] = ""; 
@@ -312,14 +384,20 @@ function RemoveSquares(board){
         board[80 - toRemove[removed]] = "";
         //manually remove centre square
         board[40] = "";
+        solveUnique(board)
+        if (uniqueSol == true && removed > 28) {
+            boardBackup = board;
+        }
+
     }
+    return boardBackup;
 
 }
 
 function findToRemove() {
     let fromEnd;
     let toRemove = [];
-    for (let rmAmt = 0; rmAmt < 22; ++rmAmt){
+    for (let rmAmt = 0; rmAmt < 28; ++rmAmt){
         let valid = true;
         fromEnd = getRandomInt(40);
         for (let prevRm = 0; prevRm < toRemove.length; ++prevRm){
